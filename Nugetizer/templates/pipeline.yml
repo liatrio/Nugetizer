@@ -1,0 +1,75 @@
+resources:
+  repositories:
+  - repository: [=[ProjectName]=]
+    type: git
+    name: FAST/[=[ProjectName]=]
+    ref: master
+
+variables:
+  BuildPlatform: 'Any CPU'
+  BuildConfiguration: 'Release'
+  nuGetFeed: 'FAST/Firstam_Fast_Nugets'
+  solution: '**/*.sln'
+  repository: [=[ProjectName]=]
+  major: '1'
+  minor: '0'
+  revision: $[counter(variables['minor'], 0)] # This will get reset to the second value every time minor gets bumped.
+  nugetVersion: '$(major).$(minor).$(revision)'
+
+name: $(repository)_$(major).$(minor).$(revision)
+
+jobs:
+- job: 'Build_and_Publish_Nuget_Package'
+  timeoutInMinutes: 0
+  workspace:
+    clean: all
+  pool:
+    name: VMSS-Windows-PROD
+  container:
+    image: ssppaps1arpscr1.azurecr.io/wincore19-vs19ent-arps-buildimage3
+    endpoint: DevOps-ACR-PROD
+
+  steps:
+  - task: NuGetToolInstaller@1
+    displayName: 'Install NuGet'
+
+  - task: NuGetCommand@2
+    displayName: 'NuGet Restore'
+    inputs:
+      restoreSolution: '$(solution)'
+      feedsToUse: 'select'
+      vstsFeed: 'FAST/Firstam_Fast_Nugets'
+  
+  - task: MSBuild@1
+    displayName: 'Build'
+    inputs:
+      solution: '$(solution)'
+      msbuildArchitecture: 'x64'
+      platform: '$(BuildPlatform)'
+      configuration: '$(BuildConfiguration)'
+
+  - task: NuGetCommand@2
+    displayName: 'NuGet Pack'
+    inputs:
+      command: 'pack'
+      packagesToPack: '**/*.csproj;!**/*.Tests.csproj'
+      versionEnvVar: 'nugetVersion'
+      versioningScheme: 'byEnvVar'
+      workingDirectory: '$(repository)'
+
+  - task: PublishSymbols@2
+    displayName: 'Publish Debug Symbols'
+    inputs:
+      SearchPattern: '**/bin/**/*.pdb'
+      SymbolServerType: 'TeamServices'
+      workingDirectory: '$(repository)'
+      
+  - task: NuGetCommand@2
+    displayName: 'NuGet Push'
+    inputs:
+      command: 'push'
+      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+      feedsToUse: 'select'
+      publishVstsFeed: '$(nuGetFeed)'
+      includeNuGetOrg: false
+      workingDirectory: '$(repository)'
