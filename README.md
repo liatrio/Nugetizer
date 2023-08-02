@@ -15,4 +15,5 @@ Example:
 `Nugetizer --monolith-location C:/repos/monolith/projectA --new-location C:/repos --project-to-move projectA`
 
 # Notes
-Right now this is a little specific to First American b/c the ADO url and project name are not configurable.  Could easily make them command line options to
+* Right now this is a little specific to First American b/c the ADO url and project name are not configurable.  Could easily make them command line options to
+* If you do not wish to migrate your package to a new repo, omit the `--new-location` option

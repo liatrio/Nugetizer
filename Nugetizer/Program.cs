@@ -11,11 +11,21 @@ public class Program {
     public static VssConnection connection;
     public static string accessToken = Environment.GetEnvironmentVariable("ADO_PAT");
 
-    public static void Main(string monolithLocation, string newLocation, string projectToMove) {
+    public static void Main(string monolithLocation, string projectToMove, string newLocation = "") {
         var url = new System.Uri("https://dev.azure.com/FirstAmCorp");
         connection = new VssConnection(url, new VssBasicCredential(string.Empty, accessToken));
         client = connection.GetClient<GitHttpClient>();
 
+        if(!string.IsNullOrEmpty(newLocation)) {
+            MigrateToRepo(monolithLocation, projectToMove, newLocation);
+        } else {
+            MigrateInPlace(monolithLocation, projectToMove);
+        }
+        
+        return;
+    }
+
+    public static void MigrateToRepo(string monolithLocation, string projectToMove, string newLocation) {
         var repo = CreateRepository(projectToMove);
 
         CloneRepository(newLocation, projectToMove, repo.WebUrl);
@@ -29,8 +39,24 @@ public class Program {
         CommitAndPush(newLocation, projectToMove);
 
         UploadPipeline(newLocation, projectToMove, repo);
+    }
+
+    public static void MigrateInPlace(string monolithLocation, string projectToMove) {
+        var repoLocation = monolithLocation;
+
+        while(Directory.GetDirectories(repoLocation).Any(a => a.EndsWith(".git"))) {
+            repoLocation = Directory.GetParent(repoLocation).FullName;
+        }
         
-        return;
+        AddTemplatedFiles(monolithLocation, projectToMove);
+
+        TransitionToPackageReference(monolithLocation, projectToMove);
+        
+        CommitAndPush(repoLocation, "");
+
+        var repo = CreateRepository("FAST");
+
+        UploadPipeline(monolithLocation, projectToMove, repo);
     }
 
     public static void UploadPipeline(string newLocation, string projectToMove, GitRepository repo) {
