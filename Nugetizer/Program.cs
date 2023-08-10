@@ -27,18 +27,30 @@ public class Program {
 
     public static void MigrateToRepo(string monolithLocation, string projectToMove, string newLocation) {
         var repo = CreateRepository(projectToMove);
+        var pathToRepo = Path.Combine(newLocation, projectToMove);
+        var pathToProject = Path.Combine(pathToRepo, projectToMove);
 
-        CloneRepository(newLocation, projectToMove, repo.WebUrl);
+        if(!CloneRepository(pathToRepo, repo.WebUrl)) {
+            return;
+        }
 
-        StrangleFromMonolith(monolithLocation, newLocation, projectToMove);
-        
-        AddTemplatedFiles(newLocation, projectToMove);
+        if(!StrangleFromMonolith(monolithLocation, pathToRepo, pathToProject)) {
+            return;
+        }
 
-        TransitionToPackageReference(newLocation, projectToMove);
-        
-        CommitAndPush(newLocation, projectToMove);
+        try {
+            AddTemplatedFiles(pathToRepo, pathToProject, projectToMove);
 
-        UploadPipeline(newLocation, projectToMove, repo);
+            TransitionToPackageReference(newLocation, projectToMove);
+            
+            CommitAndPush(newLocation, projectToMove);
+
+            UploadPipeline(newLocation, projectToMove, repo);
+        }
+        catch(Exception e) {
+            Console.WriteLine($"Exiting due to error: {e.Message}");
+            Directory.Delete(pathToRepo, true);
+        }
     }
 
     public static void MigrateInPlace(string monolithLocation, string projectToMove) {
@@ -48,7 +60,10 @@ public class Program {
             repoLocation = Directory.GetParent(repoLocation).FullName;
         }
         
-        AddTemplatedFiles(monolithLocation, projectToMove);
+        var pathToRepo = Path.Combine(repoLocation, projectToMove);
+        var pathToProject = Path.Combine(pathToRepo, projectToMove);
+        
+        AddTemplatedFiles(pathToRepo, pathToProject, projectToMove);
 
         TransitionToPackageReference(monolithLocation, projectToMove);
         
@@ -234,19 +249,27 @@ public class Program {
         }
     }
 
-    public static void StrangleFromMonolith(string monolithLocation, string newLocation, string projectToMove) {
-        var pathToRepo = Path.Combine(newLocation, projectToMove);
-        var pathToProject = Path.Combine(pathToRepo, projectToMove);
+    public static bool StrangleFromMonolith(string monolithLocation, string pathToRepo, string pathToProject) {
+        if(Directory.Exists(pathToProject)) {
+            Console.WriteLine("Exiting: Destination directory already exists");
+            return false;
+        }
 
         Directory.CreateDirectory(pathToProject);
 
-        CopyDirectory(monolithLocation, pathToProject, true);
+        try {
+            CopyDirectory(monolithLocation, pathToProject, true);
+        } catch(Exception e) {
+            Console.WriteLine("Exiting: Error migrating files from the monolith");
+            Directory.Delete(pathToRepo, true);
+            return false;
+        }
+        
+
+        return true;
     }
 
-    public static void AddTemplatedFiles(string newLocation, string projectToMove) {
-        var pathToRepo = Path.Combine(newLocation, projectToMove);
-        var pathToProject = Path.Combine(pathToRepo, projectToMove);
-
+    public static void AddTemplatedFiles(string pathToRepo, string pathToProject, string projectToMove) {
         File.Copy("./templates/.gitignore", Path.Combine(pathToRepo, ".gitignore"));
 
         var template = File.ReadAllText("./templates/nuget.nuspec");
@@ -261,7 +284,7 @@ public class Program {
 
         File.WriteAllText(Path.Combine(pathToRepo, "pipeline.yml"), template);
 
-        template = File.ReadAllText("./templates/solution.sln");
+        template = File.ReadAllText("./templates/solution");
 
         template = template.Replace("[=[ProjectName]=]", projectToMove);
 
@@ -316,11 +339,10 @@ public class Program {
         return client.CreateRepositoryAsync(repository, project: "FAST").Result;
     }
 
-    public static void CloneRepository(string localPath, string projectToMove, string uri) {
-        var path = Path.Combine(localPath, projectToMove);
-
+    public static bool CloneRepository(string path, string uri) {
         if(Directory.Exists(Path.Combine(path, ".git"))) {
-            return;
+            Console.WriteLine("Exiting: A repository already exists at the specified location");
+            return false;
         }
 
         var options = new CloneOptions {
@@ -331,5 +353,7 @@ public class Program {
         };
 
         LibGit2Sharp.Repository.Clone(uri, path, options);
+
+        return true;
     }
 }
