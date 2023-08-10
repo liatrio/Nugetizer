@@ -270,6 +270,8 @@ public class Program {
     }
 
     public static void AddTemplatedFiles(string pathToRepo, string pathToProject, string projectToMove) {
+        var csprojName = Path.GetFileName(FindProjectFile(pathToProject, projectToMove));
+
         File.Copy("./templates/.gitignore", Path.Combine(pathToRepo, ".gitignore"));
 
         var template = File.ReadAllText("./templates/nuget.nuspec");
@@ -287,6 +289,7 @@ public class Program {
         template = File.ReadAllText("./templates/solution");
 
         template = template.Replace("[=[ProjectName]=]", projectToMove);
+        template = template.Replace("[=[CSPROJName]=]", csprojName);
 
         var guid = ExtractProjectGuid(pathToProject, projectToMove);
 
