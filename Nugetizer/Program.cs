@@ -283,6 +283,7 @@ public class Program {
         template = File.ReadAllText("./templates/pipeline.yml");
 
         template = template.Replace("[=[ProjectName]=]", projectToMove);
+        template = template.Replace("[=[CSPROJName]=]", csprojName);
 
         File.WriteAllText(Path.Combine(pathToRepo, "pipeline.yml"), template);
 

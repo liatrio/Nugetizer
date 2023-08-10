@@ -52,7 +52,7 @@ jobs:
     displayName: 'NuGet Pack'
     inputs:
       command: 'pack'
-      packagesToPack: '**/*.csproj;!**/*.Tests.csproj'
+      packagesToPack: '**/[=[CSPROJName]=];!**/*.Tests.csproj'
       versionEnvVar: 'nugetVersion'
       versioningScheme: 'byEnvVar'
       workingDirectory: '$(repository)'

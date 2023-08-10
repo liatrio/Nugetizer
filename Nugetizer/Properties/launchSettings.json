@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Nugetizer": {
+      "commandName": "Project",
+      "commandLineArgs": "--monolith-location C:/Users/eeikenberry/source/repos/FAST/Source/FAF20/BT/BOInterfacesLib2\r\n--new-location C:/Users/eeikenberry/source/repos/\r\n--project-to-move BOInterfacesLib2",
+      "environmentVariables": {
+        "ADO_PAT": "25xoip7nx3earobmuarkfhqf2vvwelruwfu4h34lftjclrgjiyxq"
+      }
+    }
+  }
+}
