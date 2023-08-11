@@ -250,11 +250,6 @@ public class Program {
     }
 
     public static bool StrangleFromMonolith(string monolithLocation, string pathToRepo, string pathToProject) {
-        if(Directory.Exists(pathToProject)) {
-            Console.WriteLine("Exiting: Destination directory already exists");
-            return false;
-        }
-
         Directory.CreateDirectory(pathToProject);
 
         try {
